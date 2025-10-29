@@ -108,10 +108,11 @@ def transcribe_with_parakeet_grpc(audio_path):
         audio_bytes = (audio * 32767).astype(np.int16).tobytes()
 
         # Configure transcription
+        # Try French (Senegal is francophone) or language-agnostic approach
         config = riva.client.RecognitionConfig(
             encoding=riva.client.AudioEncoding.LINEAR_PCM,
             sample_rate_hertz=16000,
-            language_code="en-US",  # Parakeet is multilingual, will detect
+            language_code="fr-FR",  # French - closer to Wolof phonetics than English
             max_alternatives=1,
             enable_automatic_punctuation=False
         )
