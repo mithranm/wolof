@@ -257,21 +257,45 @@ def text_similarity(ref_text, user_text):
     return SequenceMatcher(None, ref_text, user_text).ratio()
 
 
-def call_nemotron_for_feedback(acoustic_sim, transcription_sim, ref_text, user_transcript, ref_transcript):
-    """Get intelligent holistic feedback from Nemotron."""
+def call_nemotron_for_feedback(acoustic_sim, transcription_sim, ref_text, user_transcript, ref_transcript, mispronunciation_peaks=None):
+    """Get intelligent holistic feedback from Nemotron with comprehensive analysis."""
     try:
+        # Build timeline analysis if available
+        timeline_section = ""
+        if mispronunciation_peaks:
+            timeline_section = "\n\n📍 Frame-Level Mispronunciation Analysis (0.5s windows, 0.25s hop):\n"
+            for peak in mispronunciation_peaks:
+                timeline_section += f"  • {peak['timestamp']:.2f}s: similarity={peak['similarity']:.3f} ({peak['severity']} severity)\n"
+
+        # Explain transcription failure if needed
+        transcription_explanation = ""
+        if transcription_sim == 0.0:
+            if not ref_transcript and not user_transcript:
+                transcription_explanation = "\n⚠️ Parakeet gRPC transcription failed for both reference and student audio (likely not standard French phonemes).\n"
+            elif not user_transcript:
+                transcription_explanation = "\n⚠️ Could not transcribe student audio - may be too quiet, unclear, or contain non-French sounds.\n"
+            elif not ref_transcript:
+                transcription_explanation = "\n⚠️ Reference transcription unavailable, transcription similarity not computed.\n"
+
         context = f"""Student attempted to say: "{ref_text}"
 
-Reference transcription: "{ref_transcript or 'N/A'}"
-Student transcription: "{user_transcript or 'N/A'}"
+Reference transcription: "{ref_transcript or 'N/A (Parakeet gRPC failed)'}"
+Student transcription: "{user_transcript or 'N/A (Parakeet gRPC failed)'}"
+{transcription_explanation}
+🎯 Wav2Vec2 Acoustic Similarity: {acoustic_sim:.3f}
+   (Cosine similarity between Wav2Vec2 embeddings from facebook/wav2vec2-large-960h-lv60-self)
 
-Acoustic similarity: {acoustic_sim:.3f} (cosine similarity, Parakeet encoder embeddings)
-Transcription similarity: {transcription_sim:.3f} (sequence match ratio)
+📝 Transcription Similarity: {transcription_sim:.3f}
+   (SequenceMatcher ratio between Parakeet gRPC transcriptions)
+{timeline_section}
+🏆 Holistic Score: {(0.6 * acoustic_sim + 0.4 * transcription_sim):.3f}
+   (60% acoustic + 40% transcription)
 
-Provide 2-3 sentences of specific, encouraging feedback:
-1. Point out the specific differences between the reference and student transcription
-2. Mention what the similarity scores mean
-3. Give actionable advice on which sounds or words to improve"""
+Provide 2-4 sentences of specific, encouraging feedback:
+1. Explain what the scores mean in practical terms
+2. If transcription is 0%, explain why (gRPC failure, unclear audio, or pronunciation mismatch)
+3. Point out specific differences using the timeline analysis
+4. Give actionable advice on which sounds, words, or timing to improve"""
 
         response = requests.post(
             f"{NEMOTRON_API_BASE}/v1/chat/completions",
@@ -297,11 +321,12 @@ Provide 2-3 sentences of specific, encouraging feedback:
     return None
 
 
-def score_pronunciation(user_embedding, user_transcript, ref_embedding, ref_transcript, phrase_text):
+def score_pronunciation(user_embedding, user_transcript, ref_embedding, ref_transcript, phrase_text, user_audio_path=None, ref_audio_path=None):
     """
     Holistic pronunciation scoring combining:
     - Acoustic similarity (Parakeet encoder embeddings) - raw cosine similarity
     - Transcription accuracy (Parakeet gRPC ASR diff) - raw sequence match ratio
+    - Frame-level mispronunciation detection (timeline analysis)
     """
     # 1. Acoustic similarity (raw cosine similarity 0-1)
     acoustic_sim = cosine_similarity(user_embedding, ref_embedding)
@@ -315,13 +340,19 @@ def score_pronunciation(user_embedding, user_transcript, ref_embedding, ref_tran
     # 3. Combined holistic score (weighted average of raw similarities)
     holistic_score = (0.6 * acoustic_sim) + (0.4 * transcription_sim)
 
-    # Get AI feedback with raw scores
+    # 4. Compute frame-level mispronunciation analysis
+    mispronunciation_peaks = []
+    if user_audio_path and ref_audio_path:
+        mispronunciation_peaks = find_mispronunciation_peaks(user_audio_path, ref_audio_path)
+
+    # Get AI feedback with comprehensive context including timeline
     ai_feedback = call_nemotron_for_feedback(
         acoustic_sim,
         transcription_sim,
         phrase_text,
         user_transcript or "",
-        ref_transcript or ""
+        ref_transcript or "",
+        mispronunciation_peaks=mispronunciation_peaks
     )
 
     if ai_feedback:
@@ -348,7 +379,8 @@ def score_pronunciation(user_embedding, user_transcript, ref_embedding, ref_tran
         "reference_transcript": ref_transcript,
         "user_transcript": user_transcript,
         "feedback": feedback,
-        "ai_feedback": ai_powered
+        "ai_feedback": ai_powered,
+        "mispronunciation_peaks": mispronunciation_peaks
     }
 
 
@@ -432,24 +464,22 @@ def score_user_pronunciation():
             phrase_text = ref_data['sentence']
             ref_audio_path = ref_data['audio_path']
 
-            # Score pronunciation holistically
+            # Score pronunciation holistically with timeline analysis
             result = score_pronunciation(
                 user_embedding,
                 user_transcript,
                 ref_embedding,
                 ref_transcript,
-                phrase_text
+                phrase_text,
+                user_audio_path=tmp_path,
+                ref_audio_path=ref_audio_path
             )
-
-            # Detect mispronunciation peaks (frame-level analysis)
-            mispronunciation_peaks = find_mispronunciation_peaks(tmp_path, ref_audio_path)
 
             return jsonify({
                 **result,
                 "reference_sentence": phrase_text,
                 "model": "wav2vec2-large + parakeet-1.1b-grpc",
-                "embedding_dim": len(user_embedding),
-                "mispronunciation_peaks": mispronunciation_peaks
+                "embedding_dim": len(user_embedding)
             })
 
         finally:
