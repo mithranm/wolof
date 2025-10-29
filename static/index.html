@@ -7,9 +7,7 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@chatwoot/chat-widget@2.3.0/dist/chatwoot.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chatwoot/chat-widget@2.3.0/dist/chatwoot.min.css">
-    <style>
+      <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -186,13 +184,13 @@
             const mediaRecorderRef = useRef(null);
             const audioChunksRef = useRef([]);
 
-            // Initialize chat widget
-            useEffect(() => {
-                window.chatwootSDK.run({
-                    websiteToken: 'YOUR_CHAT_TOKEN', // Replace with actual token
-                    baseUrl: 'https://app.chatwoot.com'
-                });
-            }, []);
+            // Simple chat function
+            const openChat = () => {
+                const message = prompt("What's your question about Wolof pronunciation?");
+                if (message) {
+                    alert(`Chat support: "${message}" - We'll get back to you!`);
+                }
+            };
 
             useEffect(() => {
                 loadPhrases();
@@ -217,11 +215,14 @@
             };
 
             const playAudio = () => {
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(currentPhrase.sentence);
-                    utterance.rate = 0.8;
-                    speechSynthesis.speak(utterance);
-                }
+                // Play REAL Wolof audio from Zenodo dataset
+                if (!currentPhrase || !currentPhrase.id) return;
+
+                const audio = new Audio(`/api/audio/${currentPhrase.id}`);
+                audio.play().catch(err => {
+                    console.error('Audio playback failed:', err);
+                    setError('Failed to play audio - check server logs');
+                });
             };
 
             const startRecording = async () => {
@@ -341,9 +342,13 @@
                         </button>
                     </div>
 
-                    <div className="chat-help">
-                        💬 Need help? Click the chat widget below!
-                    </div>
+                    <button
+                        className="button play-button"
+                        onClick={openChat}
+                        style={{background: 'linear-gradient(135deg, #FFA500, #FF6347)', fontSize: '0.9rem', padding: '0.6rem 1.2rem'}}
+                    >
+                        💬 Chat Help
+                    </button>
                 </div>
             );
         }

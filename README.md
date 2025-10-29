@@ -58,18 +58,27 @@ The game includes sample Wolof phrases:
 
 ## Audio Processing
 
-The game uses speech recognition to:
-1. Transcribe user audio recordings
-2. Extract audio embeddings for similarity comparison
-3. Provide pronunciation scores with feedback
+The game uses **Parakeet ASR** for advanced speech analysis:
+1. **Latent Representation Extraction**: Wav2Vec2 embeddings capture pronunciation features
+2. **Cosine Similarity Scoring**: Compare user audio to reference embeddings
+3. **AI-Powered Feedback**: Nemotron-Nano-9B provides intelligent pronunciation coaching
+
+### How It Works
+- **Reference Audio**: 10 native Wolof phrases from Zenodo CommonVoice dataset
+- **Embedding Model**: Wav2Vec2 (Parakeet-compatible) extracts 1024-dim latent vectors
+- **Scoring**: Cosine similarity between user/reference embeddings (0-100 scale)
+- **AI Coach**: Nemotron analyzes pronunciation and gives specific improvement tips
 
 ## Technical Stack
 
 - **Frontend**: React 18 + Web Audio API
 - **Backend**: Flask + Python
-- **Speech Processing**: Whisper/Parakeet models
+- **Speech Processing**:
+  - Parakeet ASR (Wav2Vec2) for embedding extraction
+  - Nemotron-Nano-9B for intelligent feedback
 - **Deployment**: Cloudflare Workers + Tunnel
-- **Audio**: 16kHz WAV format
+- **Audio**: Real Wolof clips (16kHz MP3) from native speakers
+- **ML Inference**: CUDA-accelerated on local GPU
 
 ## Dataset
 

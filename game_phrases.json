@@ -1,0 +1,62 @@
+[
+  {
+    "id": "5599",
+    "sentence": "Nanga moytu jegeñante bi.",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/2627b1b38d06bf257a22a85ea67e240f9b43db39d4eba26c5fcf8a3f745f42c1.mp3",
+    "word_count": 4
+  },
+  {
+    "id": "5600",
+    "sentence": "Asi rekk la taqalool ci yeneen gox yi",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/2a048ddc15edf6bf932ad8b9ba0a4018866f79ae17f9ba77a6ee679c93b53eb4.mp3",
+    "word_count": 8
+  },
+  {
+    "id": "5602",
+    "sentence": "Moo ngi ci waañ ba.",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/2ace4a3832f5eb6f81caeb3b5e3ec2497c1c01b73273705f295c5e2dfd70ef06.mp3",
+    "word_count": 5
+  },
+  {
+    "id": "5603",
+    "sentence": "Xaatim ngaa ?",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/29aa16bdbef618966f55e4099e4b58186723d05d7edbc4e57ea1023f6b9d3f31.mp3",
+    "word_count": 3
+  },
+  {
+    "id": "5691",
+    "sentence": "Guddaayam dana toll ci 3 ba 7u met",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/1ed73b61e54e8af1c1f3254f89fd5aafebd02a86bc25170812e1c39ccf9dff87.mp3",
+    "word_count": 8
+  },
+  {
+    "id": "5692",
+    "sentence": "Di kàdduy Góor-gi Mbay.",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/2ad7de3b9ee2ff41dcc602187c28524af86df1194e89e90323f84b9fed2af392.mp3",
+    "word_count": 4
+  },
+  {
+    "id": "5922",
+    "sentence": "Damaa am sëqët su wow.",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/27dca9ec17b90eba5169afb54f03c7e62f828763f853a334bc4dd7d87b69d060.mp3",
+    "word_count": 5
+  },
+  {
+    "id": "5923",
+    "sentence": "Tur wi yeneeni làkk",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/2bb41cff243f48b25910d432bc18ffa7a228616d6a478d1a5b24ff56ebec1d20.mp3",
+    "word_count": 4
+  },
+  {
+    "id": "5959",
+    "sentence": "Xew wu neex la woon.",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/23591b25ccd7b6c51d81fbc4fd0b6091b28ceee0aa4a6e730ced926fef23eac3.mp3",
+    "word_count": 5
+  },
+  {
+    "id": "6020",
+    "sentence": "Ndax lu am maanaa la ?",
+    "audio_path": "/home/mithranmohanraj/Documents/shortest-hack/datasets/zenodo-wolof-tts/data-commonvoice/audios/fbc2f100-357a-4840-b1df-8b562861e8dd/2db0ec36b0a5bcc8541dc7e6d19f9e2389b76c020259fb62d83d70b5d429590f.mp3",
+    "word_count": 6
+  }
+]
