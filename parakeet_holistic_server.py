@@ -283,7 +283,7 @@ Provide 2-3 sentences of specific, encouraging feedback:
                     {"role": "user", "content": context}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 150
+                "max_tokens": 4096
             },
             timeout=10
         )
@@ -483,7 +483,7 @@ def chat_with_nemotron():
                     {"role": "user", "content": user_message}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 200
+                "max_tokens": 4096
             },
             timeout=10
         )
