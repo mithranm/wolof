@@ -189,11 +189,31 @@
             const mediaRecorderRef = useRef(null);
             const audioChunksRef = useRef([]);
 
-            // Simple chat function
-            const openChat = () => {
-                const message = prompt("What's your question about Wolof pronunciation?");
-                if (message) {
-                    alert(`Chat support: "${message}" - We'll get back to you!`);
+            // Chat state
+            const [showChat, setShowChat] = useState(false);
+            const [chatMessage, setChatMessage] = useState('');
+            const [chatResponse, setChatResponse] = useState('');
+            const [chatLoading, setChatLoading] = useState(false);
+
+            const sendChatMessage = async () => {
+                if (!chatMessage.trim()) return;
+
+                setChatLoading(true);
+                setChatResponse('');
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({message: chatMessage})
+                    });
+
+                    const data = await response.json();
+                    setChatResponse(data.response || data.error);
+                } catch (err) {
+                    setChatResponse('Chat service unavailable');
+                } finally {
+                    setChatLoading(false);
                 }
             };
 
@@ -349,11 +369,91 @@
 
                     <button
                         className="button play-button"
-                        onClick={openChat}
+                        onClick={() => setShowChat(!showChat)}
                         style={{background: 'linear-gradient(135deg, #FFA500, #FF6347)', fontSize: '0.9rem', padding: '0.6rem 1.2rem'}}
                     >
-                        💬 Chat Help
+                        💬 Chat with AI Coach
                     </button>
+
+                    {showChat && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000
+                        }}>
+                            <div style={{
+                                background: 'white',
+                                borderRadius: '15px',
+                                padding: '2rem',
+                                maxWidth: '500px',
+                                width: '90%'
+                            }}>
+                                <h3 style={{marginTop: 0}}>Chat with Nemotron AI Coach</h3>
+                                <textarea
+                                    value={chatMessage}
+                                    onChange={(e) => setChatMessage(e.target.value)}
+                                    placeholder="Ask about Wolof pronunciation..."
+                                    style={{
+                                        width: '100%',
+                                        height: '80px',
+                                        padding: '0.8rem',
+                                        border: '2px solid #ddd',
+                                        borderRadius: '10px',
+                                        fontSize: '1rem',
+                                        resize: 'none',
+                                        marginBottom: '1rem'
+                                    }}
+                                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendChatMessage()}
+                                />
+                                <button
+                                    onClick={sendChatMessage}
+                                    disabled={chatLoading || !chatMessage.trim()}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.8rem',
+                                        background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        marginBottom: '1rem'
+                                    }}
+                                >
+                                    {chatLoading ? 'Thinking...' : 'Send'}
+                                </button>
+                                {chatResponse && (
+                                    <div style={{
+                                        background: '#f8f9fa',
+                                        padding: '1rem',
+                                        borderRadius: '10px',
+                                        border: '2px solid #667eea',
+                                        marginBottom: '1rem'
+                                    }}>
+                                        {chatResponse}
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => {setShowChat(false); setChatMessage(''); setChatResponse('');}}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.6rem',
+                                        background: '#e0e0e0',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }

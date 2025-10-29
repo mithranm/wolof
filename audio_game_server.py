@@ -12,9 +12,14 @@ import librosa
 import numpy as np
 from pathlib import Path
 import tempfile
+import requests
 
 app = Flask(__name__)
 CORS(app)
+
+# Load Nemotron config from Maxwell
+NEMOTRON_API_BASE = "http://100.116.54.128:7777"
+NEMOTRON_MODEL = "C:\\dev\\models\\Nemotron-Nano-9B-v2\\nvidia_NVIDIA-Nemotron-Nano-9B-v2-Q4_K_M.gguf"
 
 # Load game phrases
 with open('game_phrases.json', 'r', encoding='utf-8') as f:
@@ -60,7 +65,41 @@ def cosine_similarity(a, b):
     """Calculate cosine similarity between two vectors."""
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
 
-def score_pronunciation(user_embedding, reference_embedding):
+def call_nemotron_for_feedback(score, phrase_text):
+    """Get intelligent pronunciation feedback from Nemotron."""
+    try:
+        prompt = f"""You are a Wolof language pronunciation coach. A student just practiced saying:
+
+"{phrase_text}"
+
+Their pronunciation score is {score}/100 (based on acoustic similarity to native speaker).
+
+Provide concise, encouraging feedback in 1-2 sentences. Be specific about what they did well or what to improve. Keep it friendly and motivating."""
+
+        response = requests.post(
+            f"{NEMOTRON_API_BASE}/v1/chat/completions",
+            headers={"Content-Type": "application/json"},
+            json={
+                "model": NEMOTRON_MODEL,
+                "messages": [
+                    {"role": "system", "content": "You are an expert Wolof pronunciation coach. Give brief, encouraging feedback."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 100
+            },
+            timeout=5
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            return result["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        print(f"⚠️  Nemotron feedback failed: {e}")
+
+    return None
+
+def score_pronunciation(user_embedding, reference_embedding, phrase_text=""):
     """Score pronunciation using cosine similarity of MFCC embeddings."""
     similarity = cosine_similarity(user_embedding, reference_embedding)
 
@@ -68,21 +107,31 @@ def score_pronunciation(user_embedding, reference_embedding):
     # MFCC similarity typically ranges from 0.3-0.9
     score = max(0, min(100, (similarity - 0.2) * 125))  # Scale 0.2-1.0 -> 0-100
 
-    if score >= 85:
-        feedback = "🎉 Excellent! Native-like pronunciation!"
-    elif score >= 70:
-        feedback = "👏 Great job! Very close to the reference!"
-    elif score >= 55:
-        feedback = "💪 Good effort! Keep practicing!"
-    elif score >= 35:
-        feedback = "🎧 Getting there! Listen carefully and try again!"
+    # Try to get Nemotron feedback
+    ai_feedback = call_nemotron_for_feedback(score, phrase_text)
+
+    if ai_feedback:
+        feedback = ai_feedback
+        ai_powered = True
     else:
-        feedback = "📢 Try again! Pay attention to the sounds!"
+        # Fallback to basic feedback
+        if score >= 85:
+            feedback = "🎉 Excellent! Native-like pronunciation!"
+        elif score >= 70:
+            feedback = "👏 Great job! Very close to the reference!"
+        elif score >= 55:
+            feedback = "💪 Good effort! Keep practicing!"
+        elif score >= 35:
+            feedback = "🎧 Getting there! Listen carefully and try again!"
+        else:
+            feedback = "📢 Try again! Pay attention to the sounds!"
+        ai_powered = False
 
     return {
         "score": round(score, 1),
         "similarity": round(float(similarity), 3),
-        "feedback": feedback
+        "feedback": feedback,
+        "ai_feedback": ai_powered
     }
 
 @app.route('/')
@@ -154,14 +203,14 @@ def score_user_pronunciation():
             if user_embedding is None:
                 return jsonify({"error": "Failed to process audio"}), 400
 
+            # Get phrase info
+            phrase = next(p for p in GAME_PHRASES if p['id'] == phrase_id)
+
             # Get reference embedding
             ref_embedding = reference_embeddings[phrase_id]
 
-            # Score pronunciation
-            result = score_pronunciation(user_embedding, ref_embedding)
-
-            # Get phrase info
-            phrase = next(p for p in GAME_PHRASES if p['id'] == phrase_id)
+            # Score pronunciation with AI feedback
+            result = score_pronunciation(user_embedding, ref_embedding, phrase['sentence'])
 
             return jsonify({
                 **result,
@@ -181,6 +230,45 @@ def score_user_pronunciation():
         traceback.print_exc()
         return jsonify({"error": "Internal server error"}), 500
 
+@app.route('/api/chat', methods=['POST'])
+def chat_with_nemotron():
+    """Chat with Nemotron for Wolof learning support."""
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '')
+
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400
+
+        response = requests.post(
+            f"{NEMOTRON_API_BASE}/v1/chat/completions",
+            headers={"Content-Type": "application/json"},
+            json={
+                "model": NEMOTRON_MODEL,
+                "messages": [
+                    {"role": "system", "content": "You are a helpful Wolof language learning assistant. Answer questions about Wolof pronunciation, grammar, and culture. Be concise and encouraging."},
+                    {"role": "user", "content": user_message}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 200
+            },
+            timeout=10
+        )
+
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result["choices"][0]["message"]["content"].strip()
+            return jsonify({
+                "response": ai_response,
+                "model": "nemotron-nano-9b"
+            })
+        else:
+            return jsonify({"error": "AI service unavailable"}), 503
+
+    except Exception as e:
+        print(f"❌ Chat error: {e}")
+        return jsonify({"error": "Chat service temporarily unavailable"}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 49152))
     print(f"\n🚀 Wolof Pronunciation Game Server")
@@ -188,4 +276,5 @@ if __name__ == "__main__":
     print(f"🎯 {len(GAME_PHRASES)} phrases loaded")
     print(f"🧠 {len(reference_embeddings)} MFCC embeddings ready")
     print(f"🎵 Real Wolof audio from Zenodo dataset")
+    print(f"🤖 Nemotron AI coach: {NEMOTRON_API_BASE}")
     app.run(host='0.0.0.0', port=port, debug=False)
