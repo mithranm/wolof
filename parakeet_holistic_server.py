@@ -97,6 +97,91 @@ def extract_wav2vec2_embedding(audio_path):
         return None
 
 
+def extract_frame_level_embeddings(audio_path, frame_duration=0.5, hop_duration=0.25):
+    """
+    Extract frame-level embeddings for mispronunciation detection.
+
+    Args:
+        audio_path: Path to audio file
+        frame_duration: Duration of each frame in seconds (default 0.5s)
+        hop_duration: Hop between frames in seconds (default 0.25s, 50% overlap)
+
+    Returns:
+        List of (timestamp, embedding) tuples
+    """
+    try:
+        # Load audio
+        audio, sr = librosa.load(audio_path, sr=16000, duration=10)
+
+        frame_samples = int(frame_duration * sr)
+        hop_samples = int(hop_duration * sr)
+
+        frame_embeddings = []
+
+        # Extract embeddings for each frame with sliding window
+        for start in range(0, len(audio) - frame_samples + 1, hop_samples):
+            frame = audio[start:start + frame_samples]
+            timestamp = start / sr
+
+            # Process frame
+            inputs = processor(frame, sampling_rate=16000, return_tensors="pt", padding=True)
+            inputs = {k: v.to(device) for k, v in inputs.items() if isinstance(v, torch.Tensor)}
+
+            # Extract embedding
+            with torch.no_grad():
+                outputs = model(**inputs, output_hidden_states=True)
+                embedding = outputs.last_hidden_state.mean(dim=1).cpu().numpy().flatten()
+
+            frame_embeddings.append((timestamp, embedding))
+
+        return frame_embeddings
+    except Exception as e:
+        print(f"❌ Error extracting frame embeddings: {e}")
+        return []
+
+
+def find_mispronunciation_peaks(user_audio_path, ref_audio_path, threshold=0.7):
+    """
+    Identify timestamps where pronunciation differs significantly.
+
+    Args:
+        user_audio_path: Path to user's audio
+        ref_audio_path: Path to reference audio
+        threshold: Similarity threshold below which pronunciation is flagged (default 0.7)
+
+    Returns:
+        List of dictionaries with timestamp, similarity, and severity
+    """
+    user_frames = extract_frame_level_embeddings(user_audio_path)
+    ref_frames = extract_frame_level_embeddings(ref_audio_path)
+
+    if not user_frames or not ref_frames:
+        return []
+
+    # Align frames by taking minimum length
+    min_frames = min(len(user_frames), len(ref_frames))
+
+    mispronunciation_regions = []
+
+    for i in range(min_frames):
+        timestamp, user_emb = user_frames[i]
+        _, ref_emb = ref_frames[i]
+
+        # Compute frame-level similarity
+        similarity = cosine_similarity(user_emb, ref_emb)
+
+        # Flag as mispronunciation if below threshold
+        if similarity < threshold:
+            severity = "high" if similarity < 0.5 else "medium" if similarity < 0.65 else "low"
+            mispronunciation_regions.append({
+                "timestamp": float(timestamp),
+                "similarity": float(similarity),
+                "severity": severity
+            })
+
+    return mispronunciation_regions
+
+
 def transcribe_with_parakeet_grpc(audio_path):
     """Transcribe audio using NVIDIA Parakeet gRPC API."""
     if asr_service is None:
@@ -144,7 +229,8 @@ for phrase in GAME_PHRASES:
             reference_data[phrase['id']] = {
                 'embedding': emb,
                 'transcript': transcript,
-                'sentence': phrase['sentence']
+                'sentence': phrase['sentence'],
+                'audio_path': audio_path
             }
 
             transcript_preview = (transcript[:40] + "...") if transcript else "⚠️ gRPC failed"
@@ -343,6 +429,7 @@ def score_user_pronunciation():
             ref_embedding = ref_data['embedding']
             ref_transcript = ref_data['transcript']
             phrase_text = ref_data['sentence']
+            ref_audio_path = ref_data['audio_path']
 
             # Score pronunciation holistically
             result = score_pronunciation(
@@ -353,11 +440,15 @@ def score_user_pronunciation():
                 phrase_text
             )
 
+            # Detect mispronunciation peaks (frame-level analysis)
+            mispronunciation_peaks = find_mispronunciation_peaks(tmp_path, ref_audio_path)
+
             return jsonify({
                 **result,
                 "reference_sentence": phrase_text,
                 "model": "wav2vec2-large + parakeet-1.1b-grpc",
-                "embedding_dim": len(user_embedding)
+                "embedding_dim": len(user_embedding),
+                "mispronunciation_peaks": mispronunciation_peaks
             })
 
         finally:
