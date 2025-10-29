@@ -353,12 +353,44 @@
                         {score && (
                             <div className="result">
                                 <div className="score-value">{(score.score * 100).toFixed(0)}%</div>
-                                <div className="feedback-text">{score.feedback}</div>
-                                {score.user_transcript && (
-                                    <div className="transcription">
-                                        You said: "{score.user_transcript}"
+
+                                <div style={{display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1rem', fontSize: '0.85rem'}}>
+                                    <div style={{textAlign: 'center'}}>
+                                        <div style={{color: '#666', fontSize: '0.75rem'}}>Acoustic</div>
+                                        <div style={{fontWeight: '600', color: '#667eea'}}>{(score.acoustic_similarity * 100).toFixed(0)}%</div>
+                                    </div>
+                                    <div style={{textAlign: 'center'}}>
+                                        <div style={{color: '#666', fontSize: '0.75rem'}}>Transcription</div>
+                                        <div style={{fontWeight: '600', color: '#764ba2'}}>{(score.transcription_similarity * 100).toFixed(0)}%</div>
+                                    </div>
+                                </div>
+
+                                {score.reference_transcript && score.user_transcript && (
+                                    <div style={{marginBottom: '1rem'}}>
+                                        <div style={{
+                                            background: '#f0f9ff',
+                                            padding: '0.6rem',
+                                            borderRadius: '8px',
+                                            borderLeft: '3px solid #3b82f6',
+                                            marginBottom: '0.5rem',
+                                            fontSize: '0.85rem'
+                                        }}>
+                                            <strong>Reference:</strong> "{score.reference_transcript}"
+                                        </div>
+                                        <div style={{
+                                            background: '#fef3c7',
+                                            padding: '0.6rem',
+                                            borderRadius: '8px',
+                                            borderLeft: '3px solid #f59e0b',
+                                            fontSize: '0.85rem'
+                                        }}>
+                                            <strong>You said:</strong> "{score.user_transcript}"
+                                        </div>
                                     </div>
                                 )}
+
+                                <div className="feedback-text">{score.feedback}</div>
+
                                 {score.mispronunciation_peaks && score.mispronunciation_peaks.length > 0 && (
                                     <div style={{marginTop: '1rem'}}>
                                         <div style={{fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem', color: '#666'}}>
