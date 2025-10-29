@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wolof Pronunciation Game</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@chatwoot/chat-widget@2.3.0/dist/chatwoot.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@chatwoot/chat-widget@2.3.0/dist/chatwoot.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+            padding: 1.5rem;
+            margin: 20px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .phrase-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .wolof-phrase {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .translation {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin: 1rem 0;
+        }
+
+        .button {
+            border: none;
+            border-radius: 25px;
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .play-button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .record-button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .record-button.recording {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            animation: recordPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes recordPulse {
+            0% { box-shadow: 0 0 0 0 rgba(250, 112, 154, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(250, 112, 154, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(250, 112, 154, 0); }
+        }
+
+        .refresh-button {
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            text-align: center;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 1rem 0;
+        }
+
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .feedback-text {
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .transcription {
+            background: white;
+            padding: 0.8rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            margin-top: 0.5rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 1rem;
+            color: #666;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 0.8rem;
+            border-radius: 10px;
+            border-left: 4px solid #c33;
+            margin: 0.5rem 0;
+            font-size: 0.9rem;
+        }
+
+        .chat-help {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function WolofGame() {
+            const [currentPhrase, setCurrentPhrase] = useState(null);
+            const [isRecording, setIsRecording] = useState(false);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [score, setScore] = useState(null);
+            const [error, setError] = useState(null);
+            const [phrases, setPhrases] = useState([]);
+
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
+
+            // Initialize chat widget
+            useEffect(() => {
+                window.chatwootSDK.run({
+                    websiteToken: 'YOUR_CHAT_TOKEN', // Replace with actual token
+                    baseUrl: 'https://app.chatwoot.com'
+                });
+            }, []);
+
+            useEffect(() => {
+                loadPhrases();
+            }, []);
+
+            const loadPhrases = async () => {
+                try {
+                    const response = await fetch('/api/phrases');
+                    const data = await response.json();
+                    setPhrases(data.phrases);
+                    selectRandomPhrase(data.phrases);
+                } catch (err) {
+                    setError('Failed to load phrases');
+                }
+            };
+
+            const selectRandomPhrase = (availablePhrases) => {
+                const randomPhrase = availablePhrases[Math.floor(Math.random() * availablePhrases.length)];
+                setCurrentPhrase(randomPhrase);
+                setScore(null);
+                setError(null);
+            };
+
+            const playAudio = () => {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(currentPhrase.sentence);
+                    utterance.rate = 0.8;
+                    speechSynthesis.speak(utterance);
+                }
+            };
+
+            const startRecording = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorderRef.current = new MediaRecorder(stream);
+                    audioChunksRef.current = [];
+
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        audioChunksRef.current.push(event.data);
+                    };
+
+                    mediaRecorderRef.current.onstop = async () => {
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                        await processAudio(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorderRef.current.start();
+                    setIsRecording(true);
+                } catch (err) {
+                    setError('Microphone access denied');
+                }
+            };
+
+            const stopRecording = () => {
+                if (mediaRecorderRef.current && isRecording) {
+                    mediaRecorderRef.current.stop();
+                    setIsRecording(false);
+                    setIsProcessing(true);
+                }
+            };
+
+            const processAudio = async (audioBlob) => {
+                try {
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.wav');
+                    formData.append('phrase_id', currentPhrase.id);
+
+                    const response = await fetch('/api/score', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error('Scoring failed');
+
+                    const result = await response.json();
+                    setScore(result);
+                    setError(null);
+                } catch (err) {
+                    setError('Processing failed');
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            if (!currentPhrase) {
+                return (
+                    <div className="game-container">
+                        <div className="loading">Loading...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="game-container">
+                    <h1 className="title">🌍 Wolof Pronunciation</h1>
+
+                    <div className="phrase-card">
+                        <div className="wolof-phrase">{currentPhrase.sentence}</div>
+                        <div className="translation">{currentPhrase.translation}</div>
+                    </div>
+
+                    {error && (
+                        <div className="error-message">❌ {error}</div>
+                    )}
+
+                    <div className="controls">
+                        <button
+                            className="button play-button"
+                            onClick={playAudio}
+                            disabled={isRecording || isProcessing}
+                        >
+                            🔊 Play
+                        </button>
+
+                        <button
+                            className={`button record-button ${isRecording ? 'recording' : ''}`}
+                            onClick={isRecording ? stopRecording : startRecording}
+                            disabled={isProcessing}
+                        >
+                            {isRecording ? '🔴 Stop' : '🎤 Record'}
+                        </button>
+
+                        {isProcessing && (
+                            <div className="loading">Processing...</div>
+                        )}
+
+                        {score && (
+                            <div className="result">
+                                <div className="score-value">{score.score}/100</div>
+                                <div className="feedback-text">{score.feedback}</div>
+                                {score.user_transcription && (
+                                    <div className="transcription">
+                                        You said: "{score.user_transcription}"
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <button
+                            className="button refresh-button"
+                            onClick={() => selectRandomPhrase(phrases)}
+                            disabled={isRecording || isProcessing}
+                        >
+                            🔄 Next Phrase
+                        </button>
+                    </div>
+
+                    <div className="chat-help">
+                        💬 Need help? Click the chat widget below!
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<WolofGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>

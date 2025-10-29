@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wolof Pronunciation Game</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 2rem;
+            margin: 20px;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 2rem;
+            font-weight: 700;
+        }
+
+        .phrase-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .wolof-phrase {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .translation {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .button {
+            border: none;
+            border-radius: 50px;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .play-button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .record-button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .record-button.recording {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            animation: recordPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes recordPulse {
+            0% { box-shadow: 0 0 0 0 rgba(250, 112, 154, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(250, 112, 154, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(250, 112, 154, 0); }
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin-top: 1rem;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result {
+            text-align: center;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 1rem 0;
+        }
+
+        .score-value {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .feedback-text {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .transcription {
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            margin-top: 1rem;
+            font-family: monospace;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 1rem;
+            color: #666;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 1rem;
+            border-radius: 10px;
+            border-left: 4px solid #c33;
+            margin: 1rem 0;
+        }
+
+        .refresh-button {
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function WolofPronunciationGame() {
+            const [currentPhrase, setCurrentPhrase] = useState(null);
+            const [isRecording, setIsRecording] = useState(false);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [score, setScore] = useState(null);
+            const [error, setError] = useState(null);
+            const [phrases, setPhrases] = useState([]);
+            const [audioURL, setAudioURL] = useState(null);
+
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
+
+            // Load phrases on mount
+            useEffect(() => {
+                loadPhrases();
+            }, []);
+
+            const loadPhrases = async () => {
+                try {
+                    const response = await fetch('/api/phrases');
+                    const data = await response.json();
+                    setPhrases(data.phrases);
+                    selectRandomPhrase(data.phrases);
+                } catch (err) {
+                    setError('Failed to load game phrases');
+                    console.error('Error loading phrases:', err);
+                }
+            };
+
+            const selectRandomPhrase = (availablePhrases) => {
+                const randomPhrase = availablePhrases[Math.floor(Math.random() * availablePhrases.length)];
+                setCurrentPhrase(randomPhrase);
+                setScore(null);
+                setError(null);
+                setAudioURL(null);
+            };
+
+            const playReferenceAudio = () => {
+                if (!currentPhrase) return;
+
+                // Use Web Speech API for basic TTS
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(currentPhrase.sentence);
+                    utterance.lang = 'en-US'; // Wolof not supported, fallback to English
+                    utterance.rate = 0.8;
+                    speechSynthesis.speak(utterance);
+                } else {
+                    setError('Speech synthesis not supported in your browser');
+                }
+            };
+
+            const startRecording = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorderRef.current = new MediaRecorder(stream);
+                    audioChunksRef.current = [];
+
+                    mediaRecorderRef.current.ondataavailable = (event) => {
+                        audioChunksRef.current.push(event.data);
+                    };
+
+                    mediaRecorderRef.current.onstop = async () => {
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                        await processAudio(audioBlob);
+                        setAudioURL(URL.createObjectURL(audioBlob));
+
+                        // Stop all tracks
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorderRef.current.start();
+                    setIsRecording(true);
+                } catch (err) {
+                    setError('Microphone access denied');
+                    console.error('Error accessing microphone:', err);
+                }
+            };
+
+            const stopRecording = () => {
+                if (mediaRecorderRef.current && isRecording) {
+                    mediaRecorderRef.current.stop();
+                    setIsRecording(false);
+                    setIsProcessing(true);
+                }
+            };
+
+            const processAudio = async (audioBlob) => {
+                try {
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.wav');
+                    formData.append('phrase_id', currentPhrase.id);
+
+                    const response = await fetch('/api/score', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Scoring failed');
+                    }
+
+                    const result = await response.json();
+                    setScore(result);
+                    setError(null);
+
+                } catch (err) {
+                    setError('Failed to process audio');
+                    console.error('Error processing audio:', err);
+                } finally {
+                    setIsProcessing(false);
+                }
+            };
+
+            const handleRecordClick = () => {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    startRecording();
+                }
+            };
+
+            const handleRefresh = () => {
+                selectRandomPhrase(phrases);
+            };
+
+            if (!currentPhrase) {
+                return (
+                    <div className="game-container">
+                        <div className="loading">Loading game...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="game-container">
+                    <h1 className="title">🌍 Wolof Pronunciation Game</h1>
+
+                    <div className="phrase-card">
+                        <div className="wolof-phrase">{currentPhrase.sentence}</div>
+                        <div className="translation">{currentPhrase.translation}</div>
+                    </div>
+
+                    {error && (
+                        <div className="error-message">
+                            ❌ {error}
+                        </div>
+                    )}
+
+                    <div className="controls">
+                        <button
+                            className="button play-button"
+                            onClick={playReferenceAudio}
+                            disabled={isRecording || isProcessing}
+                        >
+                            🔊 Play Phrase
+                        </button>
+
+                        <button
+                            className={`button record-button ${isRecording ? 'recording' : ''}`}
+                            onClick={handleRecordClick}
+                            disabled={isProcessing}
+                        >
+                            {isRecording ? '🔴 Stop Recording' : '🎤 Record Your Pronunciation'}
+                        </button>
+
+                        {isProcessing && (
+                            <div className="loading">
+                                Processing your pronunciation...
+                            </div>
+                        )}
+
+                        {score && (
+                            <div className="result">
+                                <div className="score-value">{score.score}/100</div>
+                                <div className="feedback-text">{score.feedback}</div>
+
+                                {score.user_transcription && (
+                                    <div className="transcription">
+                                        <strong>You said:</strong> "{score.user_transcription}"
+                                    </div>
+                                )}
+
+                                {audioURL && (
+                                    <audio controls src={audioURL} style={{marginTop: '1rem', width: '100%'}}>
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                )}
+                            </div>
+                        )}
+
+                        <button
+                            className="button refresh-button"
+                            onClick={handleRefresh}
+                            disabled={isRecording || isProcessing}
+                        >
+                            🔄 New Phrase
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(<WolofPronunciationGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>

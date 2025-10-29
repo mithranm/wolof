@@ -1,0 +1,16 @@
+{
+  "name": "wolof-pronunciation-game",
+  "version": "1.0.0",
+  "description": "Interactive Wolof pronunciation learning game with chat support",
+  "main": "server.js",
+  "scripts": {
+    "start": "python simple_game_server.py",
+    "dev": "python simple_game_server.py"
+  },
+  "dependencies": {
+    "@chatwoot/chat-widget": "^2.3.0"
+  },
+  "keywords": ["wolof", "pronunciation", "learning", "game", "chat"],
+  "author": "Mithran Mohanraj",
+  "license": "MIT"
+}
