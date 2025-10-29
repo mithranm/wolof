@@ -30,10 +30,15 @@ A web-based pronunciation learning game for Wolof language with AI-powered scori
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+conda create -n wolof-game python=3.10 -y
+conda activate wolof-game
+pip install flask flask-cors torch transformers librosa requests numpy nvidia-riva-client python-dotenv
+
+# Create .env file with your NVIDIA API key
+echo "PARAKEET_API_KEY=your-api-key-here" > .env
 
 # Start the game server
-PORT=49152 python simple_game_server.py
+PORT=49152 python parakeet_holistic_server.py
 
 # Access the game at http://localhost:49152
 ```
@@ -58,27 +63,44 @@ The game includes sample Wolof phrases:
 
 ## Audio Processing
 
-The game uses **Parakeet ASR** for advanced speech analysis:
-1. **Latent Representation Extraction**: Wav2Vec2 embeddings capture pronunciation features
-2. **Cosine Similarity Scoring**: Compare user audio to reference embeddings
-3. **AI-Powered Feedback**: Nemotron-Nano-9B provides intelligent pronunciation coaching
+The game uses **holistic pronunciation scoring** combining multiple analysis methods:
+
+### Dual-Model Scoring System
+1. **Acoustic Similarity (60% weight)**:
+   - Wav2Vec2 encoder extracts latent embeddings from speech audio
+   - Cosine similarity compares user vs. reference pronunciation
+   - Captures prosody, rhythm, and acoustic features
+
+2. **Transcription Accuracy (40% weight)**:
+   - NVIDIA Parakeet gRPC API transcribes user and reference audio
+   - Sequence matching measures pronunciation correctness
+   - Identifies specific word/sound errors
+
+3. **AI-Powered Feedback**:
+   - Nemotron-Nano-9B analyzes both scores + transcription diffs
+   - Provides specific, actionable pronunciation coaching
+   - Points out exact differences and improvement areas
 
 ### How It Works
 - **Reference Audio**: 10 native Wolof phrases from Zenodo CommonVoice dataset
-- **Embedding Model**: Wav2Vec2 (Parakeet-compatible) extracts 1024-dim latent vectors
-- **Scoring**: Cosine similarity between user/reference embeddings (0-100 scale)
-- **AI Coach**: Nemotron analyzes pronunciation and gives specific improvement tips
+- **Embedding Model**: facebook/wav2vec2-large-960h-lv60-self (1024-dim vectors)
+- **Transcription ASR**: NVIDIA Parakeet-1.1B (multilingual gRPC API)
+- **Holistic Score**: Raw similarity (0-1 scale): `0.6 × acoustic + 0.4 × transcription`
+- **AI Coach**: Nemotron analyzes transcription diffs and gives targeted feedback
+- **Chat Feature**: Ask the AI coach questions about Wolof pronunciation anytime
 
 ## Technical Stack
 
 - **Frontend**: React 18 + Web Audio API
-- **Backend**: Flask + Python
+- **Backend**: Flask + Python 3.10
 - **Speech Processing**:
-  - Parakeet ASR (Wav2Vec2) for embedding extraction
-  - Nemotron-Nano-9B for intelligent feedback
+  - Wav2Vec2 (facebook/wav2vec2-large-960h-lv60-self) for acoustic embeddings
+  - NVIDIA Parakeet gRPC API (parakeet-1.1b-multilingual) for transcription
+  - Nemotron-Nano-9B for AI coaching with transcription diff analysis
 - **Deployment**: Cloudflare Workers + Tunnel
 - **Audio**: Real Wolof clips (16kHz MP3) from native speakers
-- **ML Inference**: CUDA-accelerated on local GPU
+- **ML Inference**: CUDA-accelerated on local GPU (RTX 5060 Ti)
+- **Environment**: python-dotenv for secure API key management
 
 ## Dataset
 
