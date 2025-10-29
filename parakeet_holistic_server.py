@@ -266,6 +266,9 @@ def call_nemotron_for_feedback(acoustic_sim, transcription_sim, ref_text, user_t
             timeline_section = "\n\n📍 Frame-Level Mispronunciation Analysis (0.5s windows, 0.25s hop):\n"
             for peak in mispronunciation_peaks:
                 timeline_section += f"  • {peak['timestamp']:.2f}s: similarity={peak['similarity']:.3f} ({peak['severity']} severity)\n"
+            print(f"🔍 Found {len(mispronunciation_peaks)} mispronunciation peaks")
+        else:
+            print(f"⚠️ No mispronunciation peaks detected")
 
         # Explain transcription failure if needed
         transcription_explanation = ""
@@ -297,6 +300,12 @@ Provide 2-4 sentences of specific, encouraging feedback:
 3. Point out specific differences using the timeline analysis
 4. Give actionable advice on which sounds, words, or timing to improve"""
 
+        print(f"\n🤖 Sending to Nemotron:")
+        print(f"   Phrase: {ref_text}")
+        print(f"   Acoustic: {acoustic_sim:.3f}, Transcription: {transcription_sim:.3f}")
+        print(f"   Timeline peaks: {len(mispronunciation_peaks) if mispronunciation_peaks else 0}")
+        print(f"   Context length: {len(context)} chars\n")
+
         response = requests.post(
             f"{NEMOTRON_API_BASE}/v1/chat/completions",
             headers={"Content-Type": "application/json"},
@@ -307,14 +316,18 @@ Provide 2-4 sentences of specific, encouraging feedback:
                     {"role": "user", "content": context}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2048
+                "max_tokens": 512
             },
-            timeout=10
+            timeout=30
         )
 
         if response.status_code == 200:
             result = response.json()
-            return result["choices"][0]["message"]["content"].strip()
+            feedback = result["choices"][0]["message"]["content"].strip()
+            print(f"✅ Nemotron responded ({len(feedback)} chars)")
+            return feedback
+        else:
+            print(f"❌ Nemotron returned status {response.status_code}")
     except Exception as e:
         print(f"⚠️ Nemotron feedback failed: {e}")
 
@@ -513,9 +526,9 @@ def chat_with_nemotron():
                     {"role": "user", "content": user_message}
                 ],
                 "temperature": 0.7,
-                "max_tokens": 2048
+                "max_tokens": 512
             },
-            timeout=10
+            timeout=30
         )
 
         if response.status_code == 200:
