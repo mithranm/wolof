@@ -375,6 +375,7 @@ def get_phrases():
         {
             "id": p["id"],
             "sentence": p["sentence"],
+            "translation": p.get("translation", ""),
             "word_count": p["word_count"],
             "difficulty": "beginner" if p["word_count"] <= 4 else "intermediate"
         }
