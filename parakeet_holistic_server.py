@@ -27,7 +27,7 @@ CORS(app)
 # NVIDIA Parakeet gRPC config
 PARAKEET_SERVER = "grpc.nvcf.nvidia.com:443"
 PARAKEET_FUNCTION_ID = "71203149-d3b7-4460-8231-1be2543a1fca"
-PARAKEET_API_KEY = "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"
+PARAKEET_API_KEY = os.environ.get('PARAKEET_API_KEY', '')
 
 # Nemotron config from Maxwell
 NEMOTRON_API_BASE = "http://100.116.54.128:7777"
