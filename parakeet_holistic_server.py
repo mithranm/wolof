@@ -20,6 +20,10 @@ import tempfile
 import requests
 from difflib import SequenceMatcher
 import riva.client
+from dotenv import load_dotenv
+
+# Load environment variables from .env
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
