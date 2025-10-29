@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Wolof Pronunciation Game Server - Holistic Parakeet Scoring
+Wolof Pronunciation Game Server - Holistic Scoring
 Combines:
-  - Parakeet encoder embeddings for acoustic similarity (from transformers)
-  - Parakeet gRPC transcription for pronunciation accuracy (NVIDIA API)
-  - Nemotron AI for intelligent feedback
+  - Wav2Vec2 encoder embeddings for acoustic similarity
+  - NVIDIA Parakeet gRPC transcription for pronunciation accuracy
+  - Nemotron AI for intelligent feedback with transcription diff analysis
 """
 
 from flask import Flask, jsonify, send_file, request
@@ -14,7 +14,7 @@ import json
 import torch
 import librosa
 import numpy as np
-from transformers import AutoProcessor, ParakeetEncoderModel
+from transformers import AutoProcessor, AutoModel
 from pathlib import Path
 import tempfile
 import requests
@@ -37,18 +37,18 @@ NEMOTRON_MODEL = "C:\\dev\\models\\Nemotron-Nano-9B-v2\\nvidia_NVIDIA-Nemotron-N
 with open('game_phrases.json', 'r', encoding='utf-8') as f:
     GAME_PHRASES = json.load(f)
 
-# Initialize Parakeet encoder for embeddings
-print("🚀 Loading Parakeet-TDT encoder...")
-model_name = "nvidia/parakeet-tdt-0.6b-v2"
+# Initialize Wav2Vec2 for embeddings (Parakeet encoder not available in transformers)
+print("🚀 Loading Wav2Vec2 encoder for embeddings...")
+model_name = "facebook/wav2vec2-large-960h-lv60-self"
 processor = AutoProcessor.from_pretrained(model_name)
-model = ParakeetEncoderModel.from_pretrained(model_name)
+model = AutoModel.from_pretrained(model_name)
 
 # Move to GPU if available
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = model.to(device)
 model.eval()
 
-print(f"✅ Parakeet encoder loaded on {device}")
+print(f"✅ Wav2Vec2 encoder loaded on {device}")
 
 # Initialize Riva ASR client
 print("🚀 Connecting to NVIDIA Parakeet gRPC API...")
@@ -72,8 +72,8 @@ print("📊 Pre-computing reference embeddings + transcriptions...")
 reference_data = {}
 
 
-def extract_parakeet_embedding(audio_path):
-    """Extract latent representation from audio using Parakeet encoder."""
+def extract_wav2vec2_embedding(audio_path):
+    """Extract latent representation from audio using Wav2Vec2 encoder."""
     try:
         # Load audio at 16kHz
         audio, sr = librosa.load(audio_path, sr=16000, duration=10)
@@ -130,7 +130,7 @@ for phrase in GAME_PHRASES:
     audio_path = phrase['audio_path']
     if Path(audio_path).exists():
         # Extract embedding
-        emb = extract_parakeet_embedding(audio_path)
+        emb = extract_wav2vec2_embedding(audio_path)
 
         # Get transcription
         transcript = transcribe_with_parakeet_grpc(audio_path)
@@ -251,9 +251,9 @@ def score_pronunciation(user_embedding, user_transcript, ref_embedding, ref_tran
         ai_powered = False
 
     return {
-        "score": round(holistic_score, 3),
-        "acoustic_similarity": round(float(acoustic_sim), 3),
-        "transcription_similarity": round(float(transcription_sim), 3),
+        "score": float(round(holistic_score, 3)),
+        "acoustic_similarity": float(round(acoustic_sim, 3)),
+        "transcription_similarity": float(round(transcription_sim, 3)),
         "reference_transcript": ref_transcript,
         "user_transcript": user_transcript,
         "feedback": feedback,
@@ -270,7 +270,7 @@ def index():
 def health_check():
     return jsonify({
         "status": "healthy",
-        "model": "parakeet-encoder+grpc",
+        "model": "wav2vec2+parakeet-grpc",
         "phrases_loaded": len(GAME_PHRASES),
         "data_ready": len(reference_data),
         "device": device,
@@ -326,7 +326,7 @@ def score_user_pronunciation():
 
         try:
             # Extract user embedding
-            user_embedding = extract_parakeet_embedding(tmp_path)
+            user_embedding = extract_wav2vec2_embedding(tmp_path)
             if user_embedding is None:
                 return jsonify({"error": "Failed to process audio"}), 400
 
@@ -351,7 +351,7 @@ def score_user_pronunciation():
             return jsonify({
                 **result,
                 "reference_sentence": phrase_text,
-                "model": "parakeet-tdt-encoder + parakeet-1.1b-grpc",
+                "model": "wav2vec2-large + parakeet-1.1b-grpc",
                 "embedding_dim": len(user_embedding)
             })
 
@@ -408,13 +408,13 @@ def chat_with_nemotron():
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 49152))
-    print(f"\n🚀 Wolof Pronunciation Game Server - Holistic Parakeet Scoring")
+    print(f"\n🚀 Wolof Pronunciation Game Server - Holistic Scoring")
     print(f"📡 Running on http://localhost:{port}")
     print(f"🎯 {len(GAME_PHRASES)} phrases loaded")
-    print(f"🧠 {len(reference_data)} Parakeet embeddings + transcriptions ready")
+    print(f"🧠 {len(reference_data)} Wav2Vec2 embeddings + Parakeet transcriptions ready")
     print(f"🎵 Real Wolof audio from Zenodo dataset")
     print(f"🤖 Nemotron AI coach: {NEMOTRON_API_BASE}")
-    print(f"🎙️  Parakeet encoder: nvidia/parakeet-tdt-0.6b-v2")
-    print(f"🎙️  Parakeet ASR: {PARAKEET_SERVER} (gRPC)")
-    print(f"⚡ Holistic scoring: 60% acoustic + 40% transcription")
+    print(f"🎙️  Acoustic embeddings: facebook/wav2vec2-large-960h-lv60-self")
+    print(f"🎙️  Transcription ASR: NVIDIA Parakeet-1.1b (gRPC at {PARAKEET_SERVER})")
+    print(f"⚡ Holistic scoring: 60% acoustic similarity + 40% transcription accuracy")
     app.run(host='0.0.0.0', port=port, debug=False)
