@@ -82,11 +82,30 @@ The game uses **Parakeet ASR** for advanced speech analysis:
 
 ## Dataset
 
-Based on Wolof pronunciation datasets:
-- OpenSLR Wolof Speech Corpus
-- Zenodo Wolof TTS dataset
+This game uses **10 native Wolof audio phrases** from the Zenodo CommonVoice Wolof TTS dataset:
 
-See `WOLOF_PRONUNCIATION_GAME_DATA_REPORT.md` for detailed analysis.
+**Citation:**
+```
+Wolof Text-to-Speech (TTS) Dataset
+Zenodo CommonVoice Corpus
+Source: https://zenodo.org/record/4516532
+License: CC-BY 4.0
+Speakers: 2 native Wolof actors (1 male, 1 female)
+Total clips: ~40,000 short phrases
+```
+
+### Dataset Details
+- **Audio Format**: MP3 (16kHz, mono)
+- **Content**: Short conversational Wolof phrases (3-8 words)
+- **Quality**: Clean, native pronunciation
+- **Location**: `/datasets/zenodo-wolof-tts/data-commonvoice/`
+
+### Additional Resources
+- **OpenSLR Wolof Speech Corpus**: Used for validation (not included in game)
+- **Analysis Report**: See `datasets/WOLOF_PRONUNCIATION_GAME_DATA_REPORT.md`
+
+### License & Attribution
+Audio files are used under **CC-BY 4.0 license**. We gratefully acknowledge the contributors to the Zenodo CommonVoice Wolof corpus for making this educational game possible.
 
 ## Contributing
 
